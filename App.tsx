@@ -20,7 +20,7 @@ import {
   Download,
   Cpu
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { ShaderAnimation } from './components/ui/shader-lines';
 import { ResearchVisual } from './components/ui/research-visual';
 import { Footer } from './components/ui/footer';
@@ -218,9 +218,9 @@ const Workbench = () => {
                       <td className="p-3">
                         <div className="flex flex-col">
                           <span className={`w-fit px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${t.status === 'running' ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' :
-                              t.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                t.status === 'blocked' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                                  'bg-slate-700/50 text-slate-400 border-slate-600/30'
+                            t.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                              t.status === 'blocked' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                'bg-slate-700/50 text-slate-400 border-slate-600/30'
                             }`}>
                             {t.status}
                           </span>
@@ -266,9 +266,9 @@ const Workbench = () => {
                   <div className="text-slate-600 min-w-[50px] opacity-50 group-hover:opacity-100">{new Date(e.timestamp).toLocaleTimeString().split(' ')[0]}</div>
                   <div className="flex-1 break-words">
                     <span className={`font-bold ${e.event_type.includes('fail') || e.event_type.includes('block') || e.event_type.includes('violation') ? 'text-red-400' :
-                        e.event_type.includes('complete') ? 'text-emerald-400' :
-                          e.event_type.includes('start') ? 'text-sky-400' :
-                            'text-slate-300'
+                      e.event_type.includes('complete') ? 'text-emerald-400' :
+                        e.event_type.includes('start') ? 'text-sky-400' :
+                          'text-slate-300'
                       }`}>
                       [{e.event_type.toUpperCase()}]
                     </span>
