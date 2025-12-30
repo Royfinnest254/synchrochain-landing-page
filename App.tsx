@@ -25,6 +25,7 @@ import { ShaderAnimation } from './components/ui/shader-lines';
 import { ResearchVisual } from './components/ui/research-visual';
 import { Footer } from './components/ui/footer';
 import { SynchroChainEngine, Task, SystemNode, SystemEvent } from './lib/engine';
+import { WaitlistDemo } from './components/WaitlistDemo';
 import { INVARIANTS } from './lib/invariants';
 
 // --- TYPES & CONSTANTS ---
@@ -563,6 +564,8 @@ const LandingView = ({ setView }: { setView: (v: ViewName) => void }) => {
           </div>
         </div>
       </section>
+
+      <WaitlistDemo />
     </div>
   );
 };
@@ -602,6 +605,7 @@ const App: React.FC = () => {
               <Workbench />
             </motion.div>
           )}
+
         </AnimatePresence>
       </main>
       <Footer
