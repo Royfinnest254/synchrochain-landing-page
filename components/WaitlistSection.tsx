@@ -67,61 +67,34 @@ export const WaitlistSection = () => {
 
         setStatus('loading');
 
-
         try {
-            let supabaseSuccess = false;
-
-            // If Supabase is configured, upsert into Supabase
-            if (isSupabaseConfigured() && supabase) {
-                const { error: supabaseError } = await supabase
-                    .from('waitlist')
-                    .upsert(
-                        {
-                            email,
-                            name: name || null,
-                            interest: interest || null,
-                        },
-                        { onConflict: 'email' }
-                    );
-
-                if (supabaseError) {
-                    console.error('Supabase error:', supabaseError);
-                } else {
-                    supabaseSuccess = true;
-                }
+            // Check if Supabase is configured
+            if (!isSupabaseConfigured() || !supabase) {
+                console.error('Supabase is not configured. Cannot submit to waitlist.');
+                throw new Error('Waitlist service is not available. Please try again later.');
             }
 
-            // Also send to Formspree for email notifications
-            try {
-                const formspreeResponse = await fetch('https://formspree.io/f/xpwzgkrj', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
+            // Upsert into Supabase
+            const { error: supabaseError } = await supabase
+                .from('waitlist')
+                .upsert(
+                    {
+                        email,
+                        name: name || null,
+                        interest: interest || null,
                     },
-                    body: JSON.stringify({ email, name, interest }),
-                });
+                    { onConflict: 'email' }
+                );
 
-                if (!formspreeResponse.ok) {
-                    console.warn('Formspree submission failed:', formspreeResponse.status);
-                    // Only throw if Supabase also failed or isn't configured
-                    if (!supabaseSuccess && !isSupabaseConfigured()) {
-                        throw new Error('Failed to submit to waitlist');
-                    }
-                }
-            } catch (formspreeError) {
-                console.warn('Formspree error:', formspreeError);
-                // Only throw if Supabase also failed or isn't configured
-                if (!supabaseSuccess && !isSupabaseConfigured()) {
-                    throw formspreeError;
-                }
+            if (supabaseError) {
+                console.error('Supabase error:', supabaseError);
+                throw supabaseError;
             }
 
             setStatus('success');
             setEmail('');
             setName('');
             setInterest('');
-
         } catch (err) {
             console.error('Waitlist submission error:', err);
             setStatus('error');
