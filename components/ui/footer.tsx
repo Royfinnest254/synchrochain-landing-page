@@ -1,141 +1,85 @@
-
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import { Layers } from "lucide-react";
-import * as THREE from "three";
 
 interface FooterProps {
   setView: (view: 'landing' | 'workbench' | 'concept' | 'about') => void;
 }
 
-const FooterBackground = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-
-    const width = containerRef.current.clientWidth;
-    const height = containerRef.current.clientHeight;
-
-    const scene = new THREE.Scene();
-    scene.background = null;
-
-    const camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
-    camera.position.set(0, 80, 250);
-    camera.lookAt(0, 0, 0);
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    containerRef.current.appendChild(renderer.domElement);
-
-    const group = new THREE.Group();
-    scene.add(group);
-
-    // Deep tech blue / muted cyan logic
-    const material = new THREE.LineBasicMaterial({ 
-      color: 0x0ea5e9, 
-      transparent: true, 
-      opacity: 0.12 
-    });
-
-    const size = 2500; 
-    const segments = 60;
-    const step = size / segments;
-
-    const geometry = new THREE.BufferGeometry();
-    const points = [];
-
-    for (let i = 0; i <= segments; i++) {
-      const offset = i * step - size / 2;
-      points.push(new THREE.Vector3(-size / 2, 0, offset));
-      points.push(new THREE.Vector3(size / 2, 0, offset));
-      points.push(new THREE.Vector3(offset, 0, -size / 2));
-      points.push(new THREE.Vector3(offset, 0, size / 2));
-    }
-
-    geometry.setFromPoints(points);
-    const grid = new THREE.LineSegments(geometry, material);
-    grid.rotation.x = Math.PI / 12;
-    group.add(grid);
-
-    let frameId: number;
-    const animate = () => {
-      frameId = requestAnimationFrame(animate);
-      group.rotation.y += 0.00015; 
-      renderer.render(scene, camera);
-    };
-
-    animate();
-
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      renderer.setSize(w, h);
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", handleResize);
-      if (containerRef.current) {
-        containerRef.current.removeChild(renderer.domElement);
-      }
-      renderer.dispose();
-      material.dispose();
-      geometry.dispose();
-    };
-  }, []);
-
-  return <div ref={containerRef} className="absolute inset-0 z-0 pointer-events-none" />;
-};
-
 export function Footer({ setView }: FooterProps) {
   return (
-    <footer className="relative w-full bg-[#0B0F14] border-t border-white/5 py-24 px-8 text-slate-400 font-sans overflow-hidden">
-      <FooterBackground />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#0B0F14] via-transparent to-transparent pointer-events-none z-0" />
+    <footer className="w-full bg-[#0a0a0b] border-t border-white/[0.04] py-16 px-6">
+      <div className="max-w-6xl mx-auto">
 
-      <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-16 items-start">
-        <div className="space-y-6">
-          <div 
-            onClick={() => { setView('landing'); window.scrollTo(0,0); }} 
-            className="flex items-center gap-2 text-white font-bold text-xl tracking-tighter cursor-pointer group w-fit"
-          >
-            <Layers className="w-6 h-6 text-sky-500" />
-            <span>SynchroChain</span>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+
+          {/* Brand */}
+          <div className="md:col-span-2">
+            <button
+              onClick={() => { setView('landing'); window.scrollTo(0, 0); }}
+              className="flex items-center gap-3 mb-4"
+            >
+              <div className="w-8 h-8 bg-white/[0.06] rounded-lg flex items-center justify-center">
+                <Layers className="w-4 h-4 text-white/80" />
+              </div>
+              <span className="text-white font-medium tracking-tight">SynchroChain</span>
+            </button>
+            <p className="text-sm text-white/40 max-w-xs leading-relaxed">
+              A research prototype exploring correctness-first coordination
+              in distributed systems.
+            </p>
           </div>
-          <div className="text-sm font-light leading-relaxed text-slate-500 max-w-xs space-y-1">
-            <p>© 2025 SynchroChain</p>
-            <p>Independent research prototype</p>
-            <p>Founder: Roy Chumba</p>
+
+          {/* Navigation */}
+          <div>
+            <h4 className="text-xs font-medium text-white/30 uppercase tracking-wider mb-4">
+              Navigate
+            </h4>
+            <nav className="flex flex-col gap-2">
+              {[
+                { label: 'Home', view: 'landing' },
+                { label: 'Concept', view: 'concept' },
+                { label: 'Workbench', view: 'workbench' },
+                { label: 'About', view: 'about' },
+              ].map((item) => (
+                <button
+                  key={item.view}
+                  onClick={() => { setView(item.view as any); window.scrollTo(0, 0); }}
+                  className="text-sm text-white/50 hover:text-white transition-colors text-left"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* Status */}
+          <div>
+            <h4 className="text-xs font-medium text-white/30 uppercase tracking-wider mb-4">
+              Status
+            </h4>
+            <div className="space-y-2 text-sm text-white/40">
+              <p>Research Preview</p>
+              <p>Version 1.1</p>
+              <div className="flex items-center gap-2 pt-2">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+                <span>System Active</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-col md:items-center space-y-4">
-          <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-2">Navigation</h4>
-          <nav className="flex flex-col md:items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            <button onClick={() => { setView('landing'); window.scrollTo(0,0); }} className="hover:text-white transition-colors w-fit">Home</button>
-            <button onClick={() => { setView('concept'); window.scrollTo(0,0); }} className="hover:text-white transition-colors w-fit">Concept</button>
-            <button onClick={() => { setView('workbench'); window.scrollTo(0,0); }} className="hover:text-white transition-colors w-fit">Prototype</button>
-            <button onClick={() => { setView('about'); window.scrollTo(0,0); }} className="hover:text-white transition-colors w-fit">About</button>
-          </nav>
-        </div>
-
-        <div className="md:text-right flex flex-col md:items-end space-y-4">
-          <h4 className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-600 mb-2">Technical</h4>
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-500">
-            Research-Grade Prototype v0.5.0
-          </div>
+        {/* Bottom */}
+        <div className="pt-8 border-t border-white/[0.04] flex flex-col md:flex-row justify-between items-center gap-4">
+          <p className="text-xs text-white/30">
+            © 2025 SynchroChain Research. Independent project.
+          </p>
+          <p className="text-xs text-white/20">
+            Photography via Unsplash
+          </p>
         </div>
       </div>
-      
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-sky-500/10 to-transparent opacity-50" />
     </footer>
   );
 }

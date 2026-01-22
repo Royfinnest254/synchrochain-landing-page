@@ -3,22 +3,24 @@
 import { useEffect, useRef } from "react"
 import * as THREE from "three"
 
+// Subtle dark shader that matches the website aesthetic
 export function ShaderAnimation() {
     const containerRef = useRef<HTMLDivElement>(null)
     const sceneRef = useRef<{
-        camera: THREE.Camera | null
-        scene: THREE.Scene | null
-        renderer: THREE.WebGLRenderer | null
+        camera: THREE.Camera
+        scene: THREE.Scene
+        renderer: THREE.WebGLRenderer
         uniforms: {
-            time: { value: number; type: string };
-            resolution: { value: THREE.Vector2; type: string };
-        } | null
+            time: { value: number }
+            resolution: { value: THREE.Vector2 }
+            mouse: { value: THREE.Vector2 }
+        }
         animationId: number | null
     }>({
-        camera: null,
-        scene: null,
-        renderer: null,
-        uniforms: null,
+        camera: null as any,
+        scene: null as any,
+        renderer: null as any,
+        uniforms: null as any,
         animationId: null,
     })
 
@@ -28,15 +30,13 @@ export function ShaderAnimation() {
         }
 
         return () => {
-            // Cleanup
             if (sceneRef.current.animationId) {
                 cancelAnimationFrame(sceneRef.current.animationId)
             }
             if (sceneRef.current.renderer) {
                 sceneRef.current.renderer.dispose()
-                if (containerRef.current) {
-                    containerRef.current.innerHTML = ""
-                }
+                const canvas = containerRef.current?.querySelector('canvas');
+                if (canvas) containerRef.current?.removeChild(canvas);
             }
         }
     }, [])
@@ -47,98 +47,122 @@ export function ShaderAnimation() {
         const container = containerRef.current
         container.innerHTML = ""
 
-        // Initialize camera
         const camera = new THREE.Camera()
         camera.position.z = 1
 
-        // Initialize scene
         const scene = new THREE.Scene()
-
-        // Create geometry
         const geometry = new THREE.PlaneGeometry(2, 2)
 
-        // Define uniforms
         const uniforms = {
-            time: { type: "f", value: 1.0 },
-            resolution: { type: "v2", value: new THREE.Vector2() },
+            time: { value: 0.0 },
+            resolution: { value: new THREE.Vector2() },
+            mouse: { value: new THREE.Vector2(0.5, 0.5) },
         }
 
         // Vertex shader
         const vertexShader = `
-      void main() {
-        gl_Position = vec4( position, 1.0 );
-      }
-    `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `
 
-        // Fragment shader
-        // Customized for Deep Tech Blue (Cyan/Blue dominance)
+        // Fragment shader - subtle flowing gradients matching the dark theme
         const fragmentShader = `
-      #define TWO_PI 6.2831853072
-      #define PI 3.14159265359
+            precision highp float;
+            
+            uniform float time;
+            uniform vec2 resolution;
+            uniform vec2 mouse;
+            
+            // Noise functions
+            float hash(vec2 p) {
+                return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            
+            float noise(vec2 p) {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+                
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+                
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+            
+            float fbm(vec2 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+                
+                for(int i = 0; i < 5; i++) {
+                    value += amplitude * noise(p * frequency);
+                    frequency *= 2.0;
+                    amplitude *= 0.5;
+                }
+                return value;
+            }
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution.xy;
+                vec2 pos = uv * 2.0 - 1.0;
+                pos.x *= resolution.x / resolution.y;
+                
+                // Slow time for subtle movement
+                float t = time * 0.03;
+                
+                // Create flowing noise patterns
+                float n1 = fbm(pos * 1.5 + t * 0.5);
+                float n2 = fbm(pos * 2.0 - t * 0.3 + vec2(5.0, 3.0));
+                float n3 = fbm(pos * 0.8 + t * 0.2 + vec2(10.0, 7.0));
+                
+                // Mouse interaction - subtle glow near cursor
+                float mouseDist = length(uv - mouse);
+                float mouseGlow = smoothstep(0.5, 0.0, mouseDist) * 0.15;
+                
+                // Color palette - dark blues and subtle highlights
+                vec3 baseColor = vec3(0.04, 0.04, 0.045); // Near black
+                vec3 accentColor1 = vec3(0.08, 0.12, 0.18); // Dark blue
+                vec3 accentColor2 = vec3(0.06, 0.08, 0.12); // Darker blue
+                vec3 highlightColor = vec3(0.15, 0.25, 0.4); // Subtle blue highlight
+                
+                // Mix colors based on noise
+                vec3 color = baseColor;
+                color = mix(color, accentColor1, n1 * 0.4);
+                color = mix(color, accentColor2, n2 * 0.3);
+                color += highlightColor * n3 * 0.1;
+                
+                // Add mouse glow
+                color += vec3(0.1, 0.15, 0.25) * mouseGlow;
+                
+                // Vignette
+                float vignette = 1.0 - length(pos) * 0.3;
+                vignette = clamp(vignette, 0.0, 1.0);
+                color *= vignette;
+                
+                // Subtle grain
+                float grain = hash(uv + t) * 0.02;
+                color += grain;
+                
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `
 
-      precision highp float;
-      uniform vec2 resolution;
-      uniform float time;
-        
-      float random (in float x) {
-          return fract(sin(x)*1e4);
-      }
-      float random (vec2 st) {
-          return fract(sin(dot(st.xy,
-                               vec2(12.9898,78.233)))*
-              43758.5453123);
-      }
-      
-      varying vec2 vUv;
-
-      void main(void) {
-        vec2 uv = (gl_FragCoord.xy * 2.0 - resolution.xy) / min(resolution.x, resolution.y);
-        
-        vec2 fMosaicScal = vec2(4.0, 2.0);
-        vec2 vScreenSize = vec2(256,256);
-        uv.x = floor(uv.x * vScreenSize.x / fMosaicScal.x) / (vScreenSize.x / fMosaicScal.x);
-        uv.y = floor(uv.y * vScreenSize.y / fMosaicScal.y) / (vScreenSize.y / fMosaicScal.y);       
-          
-        float t = time*0.06+random(uv.x)*0.4;
-        float lineWidth = 0.0008;
-
-        float intensity = 0.0;
-        for(int j = 0; j < 3; j++){
-          for(int i=0; i < 5; i++){
-            intensity += lineWidth*float(i*i) / abs(fract(t - 0.01*float(j)+float(i)*0.01)*1.0 - length(uv));        
-          }
-        }
-
-        // Deep Tech Blue Mapping
-        // We accumulate 'intensity' and map it to a specific palette
-        // Base Color: Dark Blue/Slate, Highlight: Cyan/Sky Blue
-        
-        vec3 baseColor = vec3(0.01, 0.05, 0.15); // Deep background
-        vec3 glowColor = vec3(0.0, 0.6, 1.0);    // Cyan glow
-        
-        vec3 finalColor = baseColor + glowColor * intensity * 0.5;
-
-        gl_FragColor = vec4(finalColor, 1.0);
-      }
-    `
-
-        // Create material
         const material = new THREE.ShaderMaterial({
             uniforms: uniforms,
             vertexShader: vertexShader,
             fragmentShader: fragmentShader,
         })
 
-        // Create mesh and add to scene
         const mesh = new THREE.Mesh(geometry, material)
         scene.add(mesh)
 
-        // Initialize renderer
-        const renderer = new THREE.WebGLRenderer({ alpha: true }) // Alpha true for better blending if needed
-        renderer.setPixelRatio(window.devicePixelRatio)
+        const renderer = new THREE.WebGLRenderer({ alpha: true })
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
         container.appendChild(renderer.domElement)
 
-        // Store references
         sceneRef.current = {
             camera,
             scene,
@@ -149,22 +173,27 @@ export function ShaderAnimation() {
 
         // Handle resize
         const onWindowResize = () => {
-            if (!containerRef.current || !renderer || !uniforms) return;
-            const rect = containerRef.current.getBoundingClientRect()
+            if (!container) return;
+            const rect = container.getBoundingClientRect()
             renderer.setSize(rect.width, rect.height)
             uniforms.resolution.value.x = renderer.domElement.width
             uniforms.resolution.value.y = renderer.domElement.height
         }
 
+        // Mouse move handler
+        const onMouseMove = (e: MouseEvent) => {
+            uniforms.mouse.value.x = e.clientX / window.innerWidth
+            uniforms.mouse.value.y = 1.0 - (e.clientY / window.innerHeight)
+        }
+
         onWindowResize()
         window.addEventListener("resize", onWindowResize, false)
+        window.addEventListener("mousemove", onMouseMove, false)
 
         // Animation loop
         const animate = () => {
             sceneRef.current.animationId = requestAnimationFrame(animate)
-            if (uniforms) {
-                uniforms.time.value += 0.05
-            }
+            uniforms.time.value += 0.016
             renderer.render(scene, camera)
         }
 
@@ -174,7 +203,105 @@ export function ShaderAnimation() {
     return (
         <div
             ref={containerRef}
-            className="w-full h-full absolute inset-0 -z-10"
+            className="w-full h-full absolute inset-0"
+            style={{ opacity: 0.8 }}
         />
     )
+}
+
+// Grid shader for technical sections
+export function GridShader() {
+    const containerRef = useRef<HTMLDivElement>(null)
+    const sceneRef = useRef<any>({})
+
+    useEffect(() => {
+        if (!containerRef.current) return
+
+        const container = containerRef.current
+        container.innerHTML = ""
+
+        const camera = new THREE.Camera()
+        camera.position.z = 1
+
+        const scene = new THREE.Scene()
+        const geometry = new THREE.PlaneGeometry(2, 2)
+
+        const uniforms = {
+            time: { value: 0.0 },
+            resolution: { value: new THREE.Vector2() },
+        }
+
+        const vertexShader = `
+            void main() {
+                gl_Position = vec4(position, 1.0);
+            }
+        `
+
+        const fragmentShader = `
+            precision highp float;
+            uniform float time;
+            uniform vec2 resolution;
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution.xy;
+                
+                // Grid spacing
+                float gridSize = 40.0;
+                vec2 grid = fract(uv * gridSize);
+                
+                // Grid lines
+                float lineWidth = 0.02;
+                float line = step(1.0 - lineWidth, grid.x) + step(1.0 - lineWidth, grid.y);
+                line = clamp(line, 0.0, 1.0);
+                
+                // Animate grid appearance
+                float t = time * 0.05;
+                float wave = sin(uv.x * 3.0 + t) * sin(uv.y * 3.0 + t * 0.7) * 0.5 + 0.5;
+                
+                // Color - very subtle blue grid
+                vec3 color = vec3(0.04, 0.06, 0.1) * line * wave * 0.3;
+                
+                gl_FragColor = vec4(color, line * 0.1);
+            }
+        `
+
+        const material = new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
+            transparent: true,
+        })
+
+        const mesh = new THREE.Mesh(geometry, material)
+        scene.add(mesh)
+
+        const renderer = new THREE.WebGLRenderer({ alpha: true })
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+        container.appendChild(renderer.domElement)
+
+        sceneRef.current = { renderer, uniforms, animationId: null }
+
+        const onResize = () => {
+            const rect = container.getBoundingClientRect()
+            renderer.setSize(rect.width, rect.height)
+            uniforms.resolution.value.set(renderer.domElement.width, renderer.domElement.height)
+        }
+        onResize()
+        window.addEventListener("resize", onResize)
+
+        const animate = () => {
+            sceneRef.current.animationId = requestAnimationFrame(animate)
+            uniforms.time.value += 0.016
+            renderer.render(scene, camera)
+        }
+        animate()
+
+        return () => {
+            if (sceneRef.current.animationId) cancelAnimationFrame(sceneRef.current.animationId)
+            renderer.dispose()
+            window.removeEventListener("resize", onResize)
+        }
+    }, [])
+
+    return <div ref={containerRef} className="absolute inset-0 pointer-events-none" />
 }

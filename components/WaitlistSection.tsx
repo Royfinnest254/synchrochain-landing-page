@@ -1,189 +1,276 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, Loader2, User } from 'lucide-react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
+import { ArrowRight, Check, Loader2, Users } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export const WaitlistSection = () => {
     const [email, setEmail] = useState('');
-    const [insight, setInsight] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    const [error, setError] = useState('');
+    const [name, setName] = useState('');
+    const [interest, setInterest] = useState('');
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [waitlistCount, setWaitlistCount] = useState<number | null>(null);
+    const [isCountLoading, setIsCountLoading] = useState(true);
 
-    // Formspree ID placeholder - User to replace this
-    const FORMSPREE_ENDPOINT = "https://formspree.io/f/FORM_ID";
+    // Fetch initial count and subscribe to real-time updates
+    useEffect(() => {
+        const fetchCount = async () => {
+            try {
+                const { count, error } = await supabase
+                    .from('waitlist')
+                    .select('*', { count: 'exact', head: true });
+
+                if (error) {
+                    console.error('Error fetching waitlist count:', error);
+                } else {
+                    setWaitlistCount(count ?? 0);
+                }
+            } catch (err) {
+                console.error('Failed to fetch waitlist count:', err);
+            } finally {
+                setIsCountLoading(false);
+            }
+        };
+
+        fetchCount();
+
+        // Subscribe to real-time inserts
+        const channel = supabase
+            .channel('waitlist-changes')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'INSERT',
+                    schema: 'public',
+                    table: 'waitlist',
+                },
+                () => {
+                    // Increment count on new insert
+                    setWaitlistCount((prev) => (prev !== null ? prev + 1 : 1));
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email) return;
 
-        setIsSubmitting(true);
-        setError('');
+        setStatus('loading');
 
         try {
-            const response = await fetch(FORMSPREE_ENDPOINT, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    email,
-                    insight
-                })
-            });
+            // Upsert into Supabase (insert or update if email exists)
+            const { error: supabaseError } = await supabase
+                .from('waitlist')
+                .upsert(
+                    {
+                        email,
+                        name: name || null,
+                        interest: interest || null,
+                    },
+                    { onConflict: 'email' }
+                );
 
-            if (response.ok) {
-                setIsSubmitted(true);
-            } else {
-                // Fallback for demo/dev if endpoint is invalid (404)
-                // In production with real ID, this would trigger error handling
-                // For this task, we assume the user will replace the ID.
-                // However, if the user tests without replacing, we might want to simulate success?
-                // The prompt says: "The solution must work immediately after: Replacing FORM_ID..."
-                // So I'll just check valid response.
-                // Actually, if it fails, I should validly show error or maybe simulate success for "demo" purpose?
-                // Prompt says "Assume a Formspree endpoint... Form submits via POST".
-                // If I use a fake ID, it returns 404.
-                // I will strictly follow logic.
-                setError("Something went wrong. Please try again.");
+            if (supabaseError) {
+                console.error('Supabase error:', supabaseError);
+                throw supabaseError;
             }
+
+            // Also send to Formspree for email notifications
+            await fetch('https://formspree.io/f/xpwzgkrj', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, name, interest }),
+            }).catch(err => console.warn('Formspree notification failed:', err));
+
+            setStatus('success');
+            setEmail('');
+            setName('');
+            setInterest('');
         } catch (err) {
-            setError("Network error. Please try again.");
-        } finally {
-            setIsSubmitting(false);
+            console.error('Waitlist submission error:', err);
+            setStatus('error');
         }
     };
 
-    // Mock avatars for social proof
-    const avatars = [
-        { bg: 'bg-emerald-500', initial: 'AK' },
-        { bg: 'bg-blue-500', initial: 'RS' },
-        { bg: 'bg-purple-500', initial: 'DL' },
-        { bg: 'bg-amber-500', initial: 'MJ' },
-        { bg: 'bg-rose-500', initial: 'TV' },
-    ];
-
     return (
-        <section className="bg-[#0B0F14] py-24 px-6 relative border-t border-white/5">
-            <div className="max-w-3xl mx-auto">
+        <section className="py-24 bg-[#0a0a0b]">
+            <div className="max-w-2xl mx-auto px-6">
 
-                {/* Header */}
-                <div className="text-center space-y-4 mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
-                        Join the SynchroChain Waitlist
+                <div className="text-center mb-12">
+                    <span className="inline-flex items-center gap-3 text-xs text-white/40 uppercase tracking-[0.15em] mb-6">
+                        <span className="w-6 h-px bg-white/20" />
+                        Stay Updated
+                        <span className="w-6 h-px bg-white/20" />
+                    </span>
+                    <h2 className="text-3xl font-light text-white mb-4">
+                        Join the research preview
                     </h2>
-                    <p className="text-slate-400 max-w-lg mx-auto leading-relaxed">
-                        We are building an early-stage research system for deterministic coordination.
-                        Join us to validate the future of robust distributed systems.
+                    <p className="text-white/50 max-w-md mx-auto mb-6">
+                        Get notified about updates to the prototype, new research findings,
+                        and early access to experimental features.
                     </p>
-                </div>
 
-                {/* Form Area */}
-                <div className="bg-[#11161d] border border-white/10 rounded-2xl p-8 md:p-10 shadow-2xl relative overflow-hidden">
-
+                    {/* Live Counter */}
                     <AnimatePresence mode="wait">
-                        {!isSubmitted ? (
-                            <motion.form
-                                key="form"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                onSubmit={handleSubmit}
-                                className="space-y-6 relative z-10"
-                            >
-                                <div className="space-y-2">
-                                    <label htmlFor="email" className="text-sm font-bold text-slate-300 uppercase tracking-wider">Email Address <span className="text-rose-500">*</span></label>
-                                    <Input
-                                        id="email"
-                                        type="email"
-                                        placeholder="researcher@institute.edu"
-                                        className="bg-black/20 border-white/10 text-white placeholder:text-slate-600 focus-visible:ring-sky-500/50"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <label htmlFor="insight" className="text-sm font-bold text-slate-300 uppercase tracking-wider">Early Insight <span className="text-slate-500 normal-case font-normal">(Optional)</span></label>
-                                    <textarea
-                                        id="insight"
-                                        placeholder="What interests you about deterministic coordination?"
-                                        className="flex min-h-[100px] w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white shadow-sm transition-colors placeholder:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/50 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-                                        value={insight}
-                                        onChange={(e) => setInsight(e.target.value)}
-                                    />
-                                </div>
-
-                                {error && (
-                                    <div className="text-rose-400 text-sm bg-rose-900/10 border border-rose-500/20 p-3 rounded">
-                                        {error}
-                                    </div>
-                                )}
-
-                                <Button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-6 text-lg tracking-wide uppercase shadow-lg shadow-sky-900/20"
-                                >
-                                    {isSubmitting ? (
-                                        <span className="flex items-center gap-2">
-                                            <Loader2 className="w-5 h-5 animate-spin" /> Processing...
-                                        </span>
-                                    ) : (
-                                        "Join Waitlist"
-                                    )}
-                                </Button>
-
-                                <p className="text-center text-xs text-slate-600">
-                                    No spam. No tracking. Pure research updates.
-                                </p>
-                            </motion.form>
-                        ) : (
+                        {isCountLoading ? (
                             <motion.div
-                                key="success"
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                className="flex flex-col items-center justify-center text-center py-10 space-y-6"
+                                key="loading"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)',
+                                    border: '1px solid rgba(255,255,255,0.06)',
+                                }}
                             >
-                                <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center border border-emerald-500/20">
-                                    <CheckCircle className="w-8 h-8 text-emerald-500" />
-                                </div>
-                                <div className="space-y-2">
-                                    <h3 className="text-2xl font-bold text-white">Request Received</h3>
-                                    <p className="text-slate-400 max-w-md mx-auto">
-                                        You’re on the waitlist. We’ll notify you as SynchroChain progresses.
-                                    </p>
-                                </div>
+                                <Loader2 className="w-4 h-4 text-white/30 animate-spin" />
+                                <span className="text-sm text-white/30 font-light tracking-wide">Loading...</span>
                             </motion.div>
-                        )}
+                        ) : waitlistCount !== null && waitlistCount > 0 ? (
+                            <motion.div
+                                key="count"
+                                initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                                className="relative inline-flex items-center gap-3 px-6 py-3 rounded-full overflow-hidden group cursor-default"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)',
+                                    boxShadow: '0 0 30px rgba(16,185,129,0.1), inset 0 1px 0 rgba(255,255,255,0.05)',
+                                }}
+                            >
+                                {/* Animated border gradient */}
+                                <div
+                                    className="absolute inset-0 rounded-full"
+                                    style={{
+                                        padding: '1px',
+                                        background: 'linear-gradient(135deg, rgba(16,185,129,0.4) 0%, rgba(16,185,129,0.1) 50%, rgba(255,255,255,0.05) 100%)',
+                                        WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                        WebkitMaskComposite: 'xor',
+                                        maskComposite: 'exclude',
+                                    }}
+                                />
+
+                                {/* Subtle pulse animation on the icon */}
+                                <div className="relative">
+                                    <div className="absolute inset-0 bg-emerald-500/30 rounded-full blur-md animate-pulse" />
+                                    <Users className="relative w-4 h-4 text-emerald-400" />
+                                </div>
+
+                                <span className="text-sm text-white/80 font-light tracking-wide">
+                                    <motion.span
+                                        key={waitlistCount}
+                                        initial={{ opacity: 0, y: -15, scale: 1.2 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                                        className="inline-block font-semibold text-emerald-400 tabular-nums"
+                                    >
+                                        {waitlistCount.toLocaleString()}
+                                    </motion.span>
+                                    <span className="text-white/50">
+                                        {' '}{waitlistCount === 1 ? 'person' : 'people'} on the waitlist
+                                    </span>
+                                </span>
+                            </motion.div>
+                        ) : null}
                     </AnimatePresence>
                 </div>
 
-                {/* Traction & Social Proof */}
-                <div className="mt-10 flex flex-col items-center justify-center space-y-4">
-                    <div className="flex items-center -space-x-3">
-                        {avatars.map((avatar, i) => (
-                            <div
-                                key={i}
-                                className={`w-10 h-10 rounded-full border-2 border-[#0B0F14] flex items-center justify-center text-[10px] font-bold text-white shadow-lg ${avatar.bg}`}
-                            >
-                                {avatar.initial}
-                            </div>
-                        ))}
-                        <div className="w-10 h-10 rounded-full border-2 border-[#0B0F14] bg-[#1c232d] flex items-center justify-center text-[10px] font-bold text-slate-400 shadow-lg">
-                            +12
+                {status === 'success' ? (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center p-8 bg-white/[0.02] border border-white/[0.06] rounded-xl"
+                    >
+                        <div className="w-12 h-12 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Check className="w-6 h-6 text-emerald-500" />
                         </div>
-                    </div>
-                    <div className="text-center px-4 py-2 bg-[#11161d] border border-white/5 rounded-full">
-                        <p className="text-sm font-semibold text-slate-300">
-                            <span className="text-sky-400 font-bold">20+ people</span> have joined the SynchroChain waitlist
+                        <h3 className="text-xl font-medium text-white mb-2">You're on the list</h3>
+                        <p className="text-white/50 text-sm">
+                            We'll notify you when there are updates to the research.
                         </p>
-                    </div>
-                </div>
+                    </motion.div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
+                                    Name
+                                </label>
+                                <input
+                                    type="text"
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    placeholder="Your name"
+                                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
+                                    Email <span className="text-white/60">*</span>
+                                </label>
+                                <input
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="you@example.com"
+                                    required
+                                    className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white placeholder:text-white/30 focus:outline-none focus:border-white/20 transition-colors"
+                                />
+                            </div>
+                        </div>
 
+                        <div>
+                            <label className="block text-xs text-white/40 uppercase tracking-wider mb-2">
+                                What interests you most?
+                            </label>
+                            <select
+                                value={interest}
+                                onChange={(e) => setInterest(e.target.value)}
+                                className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.08] rounded-lg text-white focus:outline-none focus:border-white/20 transition-colors appearance-none cursor-pointer"
+                            >
+                                <option value="" className="bg-[#0a0a0b]">Select an option...</option>
+                                <option value="research" className="bg-[#0a0a0b]">Research findings</option>
+                                <option value="prototype" className="bg-[#0a0a0b]">Prototype updates</option>
+                                <option value="technical" className="bg-[#0a0a0b]">Technical deep dives</option>
+                                <option value="investment" className="bg-[#0a0a0b]">Investment opportunities</option>
+                            </select>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={status === 'loading' || !email}
+                            className="w-full py-4 bg-white text-black font-medium rounded-lg hover:bg-white/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {status === 'loading' ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Joining...
+                                </>
+                            ) : (
+                                <>
+                                    Join Waitlist
+                                    <ArrowRight className="w-4 h-4" />
+                                </>
+                            )}
+                        </button>
+
+                        {status === 'error' && (
+                            <p className="text-red-400 text-sm text-center">
+                                Something went wrong. Please try again.
+                            </p>
+                        )}
+
+                        <p className="text-xs text-white/30 text-center pt-2">
+                            We respect your privacy. No spam, unsubscribe anytime.
+                        </p>
+                    </form>
+                )}
             </div>
         </section>
     );

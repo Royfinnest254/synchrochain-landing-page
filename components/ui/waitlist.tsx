@@ -19,16 +19,15 @@ const StatusIndicator = ({ mode }: { mode: Mode }) => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className={cn(
-                "flex items-center gap-2 text-xs font-mono mt-6 justify-center",
-                mode === 'dark' ? "text-slate-500" : "text-gray-500"
+                "flex items-center gap-3 text-xs font-mono mt-8 justify-center border-t border-research-border pt-6 w-full",
+                "text-research-muted"
             )}
         >
             <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-research-blue"></span>
             </span>
-            <span className={cn("font-medium", mode === 'dark' ? "text-slate-400" : "text-gray-600")}>
-                Accepting researchers
+            <span>
+                Research Phase: Active
             </span>
         </motion.div>
     );
@@ -85,43 +84,30 @@ export const Waitlist = ({ mode = 'dark' }: Props) => {
                     <div
                         ref={ref}
                         className={cn(
-                            "w-full max-w-md mx-auto rounded-2xl transition-all duration-500 z-50 overflow-hidden relative",
-                            mode === 'dark'
-                                ? 'bg-[#0B0F14]/80 border border-white/10 shadow-2xl shadow-sky-900/10 backdrop-blur-md'
-                                : 'bg-white shadow-xl'
+                            "w-full max-w-lg mx-auto transition-all duration-500 z-50 overflow-hidden relative",
+                            "bg-research-panel border border-research-border rounded-none"
                         )}
                     >
-                        {/* Background Glow Effect */}
-                        {mode === 'dark' && (
-                            <div className="absolute top-0 right-0 w-[200px] h-[200px] bg-sky-500/5 rounded-full blur-[80px] pointer-events-none -translate-y-1/2 translate-x-1/2" />
-                        )}
-
-                        <div className={submitted ? 'p-8' : 'p-8'}>
+                        <div className="p-10">
                             {!submitted ? (
                                 <div>
-                                    <div className="text-center space-y-3">
+                                    <div className="text-left space-y-4">
                                         <motion.h2
                                             initial={{ opacity: 0, y: -10 }}
                                             animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : -10 }}
                                             transition={{ duration: 0.5 }}
-                                            className={cn(
-                                                "text-2xl md:text-3xl font-bold tracking-tight",
-                                                mode === 'dark' ? 'text-white' : 'text-gray-900'
-                                            )}
+                                            className="text-2xl font-serif font-bold text-research-text"
                                         >
-                                            Join the Waitlist
+                                            Request Access
                                         </motion.h2>
                                         <motion.p
                                             initial={{ opacity: 0 }}
                                             animate={{ opacity: inView ? 1 : 0 }}
                                             transition={{ duration: 0.5, delay: 0.1 }}
-                                            className={cn(
-                                                "text-sm leading-relaxed",
-                                                mode === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                                            )}
+                                            className="text-sm leading-relaxed text-research-muted font-light max-w-sm"
                                         >
-                                            Be the first to validate the future of deterministic coordination. <br />
-                                            Enter your email to get early access.
+                                            SynchroChain is currently in closed research preview. <br />
+                                            Leave your details to be notified when we expand the cohort.
                                         </motion.p>
                                     </div>
 
@@ -129,38 +115,28 @@ export const Waitlist = ({ mode = 'dark' }: Props) => {
                                         initial={{ opacity: 0, y: 10 }}
                                         animate={{ opacity: inView ? 1 : 0, y: inView ? 0 : 10 }}
                                         transition={{ duration: 0.5, delay: 0.2 }}
-                                        className="flex flex-col gap-4 mt-8 relative"
+                                        className="flex flex-col gap-5 mt-8 relative"
                                         onSubmit={handleSubmit}
                                     >
                                         {/* Email Field */}
-                                        <div className="relative w-full flex items-center">
-                                            <Mail className={cn("absolute left-3 w-4 h-4", mode === 'dark' ? "text-slate-500" : "text-gray-400")} />
+                                        <div className="relative w-full flex items-center group">
+                                            <Mail className="absolute left-3 w-4 h-4 text-research-muted transition-colors group-focus-within:text-research-blue" />
                                             <input
                                                 type="email"
-                                                placeholder="researcher@synchrochain.io"
-                                                className={cn(
-                                                    "flex-1 w-full rounded-lg py-3 pl-10 pr-4 text-sm leading-tight focus:outline-none transition-all border",
-                                                    mode === 'dark'
-                                                        ? "bg-[#11161d] border-white/10 text-white placeholder:text-slate-600 focus:border-sky-500/50"
-                                                        : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500/50"
-                                                )}
+                                                placeholder="academic_email@university.edu"
+                                                className="flex-1 w-full bg-[#0B0C0E] border border-research-border text-research-text rounded-none py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-research-blue focus:bg-[#0f1114] transition-all duration-300 placeholder:text-gray-700 placeholder:opacity-50"
                                                 value={email}
                                                 onChange={(e) => setEmail(e.target.value)}
                                             />
                                         </div>
 
                                         {/* Note Field */}
-                                        <div className="relative w-full">
+                                        <div className="relative w-full group">
                                             <div className="relative">
-                                                <MessageSquare className={cn("absolute left-3 top-3 w-4 h-4", mode === 'dark' ? "text-slate-500" : "text-gray-400")} />
+                                                <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-research-muted transition-colors group-focus-within:text-research-blue" />
                                                 <textarea
-                                                    placeholder="Add a note or insight (optional)..."
-                                                    className={cn(
-                                                        "w-full rounded-lg py-3 pl-10 pr-4 text-sm leading-tight focus:outline-none transition-all border resize-none min-h-[80px]",
-                                                        mode === 'dark'
-                                                            ? "bg-[#11161d] border-white/10 text-white placeholder:text-slate-600 focus:border-sky-500/50"
-                                                            : "bg-gray-50 border-gray-200 text-gray-900 focus:border-blue-500/50"
-                                                    )}
+                                                    placeholder="Research interests or affiliation (optional)..."
+                                                    className="w-full bg-[#0B0C0E] border border-research-border text-research-text rounded-none py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-research-blue focus:bg-[#0f1114] transition-all duration-300 resize-none min-h-[80px] placeholder:text-gray-700 placeholder:opacity-50"
                                                     value={note}
                                                     onChange={(e) => setNote(e.target.value)}
                                                     onFocus={() => setIsNoteFocused(true)}
@@ -173,16 +149,15 @@ export const Waitlist = ({ mode = 'dark' }: Props) => {
                                         <motion.button
                                             type="submit"
                                             disabled={!isEmailValid}
-                                            whileHover={isEmailValid ? { scale: 1.01 } : {}}
-                                            whileTap={isEmailValid ? { scale: 0.99 } : {}}
+                                            whileTap={{ scale: 0.98 }}
                                             className={cn(
-                                                "w-full py-3 px-6 rounded-lg font-bold text-sm focus:outline-none transition-all flex items-center justify-center gap-2",
+                                                "w-full py-3 px-6 rounded-none font-medium text-sm focus:outline-none transition-all duration-300 flex items-center justify-center gap-2 uppercase tracking-wide",
                                                 !isEmailValid
-                                                    ? (mode === 'dark' ? "bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed" : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed")
-                                                    : (mode === 'dark' ? "bg-sky-600 text-white border border-sky-500 hover:bg-sky-500 shadow-[0_0_20px_rgba(14,165,233,0.3)]" : "bg-black text-white hover:bg-gray-800 border-black")
+                                                    ? "bg-[#0B0C0E] text-gray-700 border border-research-border cursor-not-allowed"
+                                                    : "bg-research-blue text-[#0B0C0E] hover:bg-[#E2E4E8] border border-transparent shadow-[0_1px_2px_rgba(0,0,0,0.1)]"
                                             )}
                                         >
-                                            Join Waitlist <ArrowRight className="w-3 h-3" />
+                                            Submit Request
                                         </motion.button>
                                     </motion.form>
 
@@ -194,42 +169,20 @@ export const Waitlist = ({ mode = 'dark' }: Props) => {
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: inView ? 1 : 0, scale: inView ? 1 : 0.95 }}
                                     transition={{ duration: 0.4 }}
-                                    className="text-center py-4"
+                                    className="text-left py-4"
                                 >
-                                    <motion.div
-                                        initial={{ scale: 0, rotate: -20 }}
-                                        animate={{ scale: 1, rotate: 0 }}
-                                        transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.1 }}
-                                        className={cn(
-                                            "w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl",
-                                            mode === 'dark' ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-500" : "bg-green-100 text-green-600"
-                                        )}
-                                    >
-                                        <Check className="w-8 h-8" strokeWidth={3} />
-                                    </motion.div>
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="w-10 h-10 rounded-none flex items-center justify-center border border-research-blue text-research-blue">
+                                            <Check className="w-5 h-5" />
+                                        </div>
+                                        <h2 className="text-xl font-serif font-bold text-research-text">
+                                            Request Recorded
+                                        </h2>
+                                    </div>
 
-                                    <motion.h2
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: 0.2 }}
-                                        className={cn(
-                                            "text-xl font-bold mb-3",
-                                            mode === 'dark' ? 'text-white' : 'text-gray-900'
-                                        )}
-                                    >
-                                        You're on the list.
-                                    </motion.h2>
-                                    <motion.p
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ delay: 0.3 }}
-                                        className={cn(
-                                            "text-sm",
-                                            mode === 'dark' ? 'text-slate-400' : 'text-gray-500'
-                                        )}
-                                    >
-                                        We'll notify you when the protocol is ready for testing.
-                                    </motion.p>
+                                    <p className="text-sm text-research-muted leading-relaxed">
+                                        We review applications manually. You will receive an email if your research profile matches our current testing phase.
+                                    </p>
 
                                     {/* Show status even after success */}
                                     <div className="mt-8 opacity-50">
